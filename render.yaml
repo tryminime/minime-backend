@@ -1,0 +1,46 @@
+# render.yaml — Render Blueprint for MiniMe Backend
+# https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: minime-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: free  # Change to "starter" ($7/mo) for always-on
+    healthCheckPath: /health
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: DEBUG
+        value: "false"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: minime-db
+          property: connectionURI
+      - key: REDIS_URL
+        fromService:
+          name: minime-redis
+          type: redis
+          property: connectionURI
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: SECRET_KEY
+        generateValue: true
+      - key: CORS_ORIGINS
+        value: "https://www.tryminime.com,https://tryminime.com,http://localhost:3000"
+      - key: SPACY_MODEL
+        value: en_core_web_sm
+      - key: PORT
+        value: "8000"
+
+databases:
+  - name: minime-db
+    plan: free  # Change to "starter" for more storage
+    databaseName: minime
+    user: minime
+
+# Optional: Uncomment for managed Redis
+# redis:
+#   - name: minime-redis
+#     plan: free
