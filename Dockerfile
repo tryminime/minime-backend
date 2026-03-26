@@ -17,18 +17,25 @@ WORKDIR /app
 # Copy only requirements first (Docker layer caching)
 COPY requirements.txt ./
 
-# Install Python dependencies — numpy<2 is pinned in requirements.txt
+# Install Python dependencies
+# numpy<2 is pinned in requirements.txt to avoid NumPy 2.x issues
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir asyncpg && \
     pip install --no-cache-dir -r requirements.txt
 
+# Install karateclub separately with --no-deps
+# karateclub 1.3.3 demands numpy<1.23 but actually works fine with numpy 1.26+
+# Its real deps (networkx, scikit-learn, etc.) are already installed above
+RUN pip install --no-cache-dir --no-deps "karateclub>=1.3.3"
+
 # Download lightweight spaCy model for production
 RUN python -m spacy download en_core_web_sm
 
-# Verify critical imports work
-RUN python -c "import fastapi; import uvicorn; import sqlalchemy; print('Core imports OK')"
+# Verify critical imports work at build time
+RUN python -c "import fastapi, uvicorn, sqlalchemy; print('Core OK')"
 RUN python -c "import numpy; print(f'numpy {numpy.__version__}')"
-RUN python -c "import karateclub; print('karateclub OK')" || echo "WARN: karateclub not available (non-fatal)"
+RUN python -c "import karateclub; print('karateclub OK')" || echo "WARN: karateclub not available"
+RUN python -c "import spacy; print('spacy OK')"
 
 # Copy application code
 COPY . .
