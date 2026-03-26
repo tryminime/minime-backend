@@ -20,8 +20,8 @@ RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir asyncpg && \
     pip install --no-cache-dir -r requirements.txt || true
 
-# Fix for karateclub forcing ancient numpy versions
-RUN pip install --no-cache-dir --no-deps karateclub>=1.3.3 gensim>=4.3.0 scipy<1.12.0
+# Fix karateclub forcing old numpy — install with --no-deps and pin scipy
+RUN pip install --no-cache-dir --no-deps "karateclub>=1.3.3" "gensim>=4.3.0" "scipy<1.12.0" || true
 
 # Download lightweight spaCy model for production
 RUN python -m spacy download en_core_web_sm || true
