@@ -19,22 +19,17 @@ COPY requirements.txt ./
 
 # Install Python dependencies
 # numpy<2 is pinned in requirements.txt to avoid NumPy 2.x issues
+# karateclub is NOT installed (its numpy<1.23 pin is irreconcilable)
+# — the import is wrapped in try/except in node2vec_service.py
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir asyncpg && \
     pip install --no-cache-dir -r requirements.txt
-
-# Install karateclub separately with --no-deps
-# karateclub 1.3.3 demands numpy<1.23 but actually works fine with numpy 1.26+
-# Its real deps (networkx, scikit-learn, etc.) are already installed above
-RUN pip install --no-cache-dir --no-deps "karateclub>=1.3.3"
 
 # Download lightweight spaCy model for production
 RUN python -m spacy download en_core_web_sm
 
 # Verify critical imports work at build time
-RUN python -c "import fastapi, uvicorn, sqlalchemy; print('Core OK')"
+RUN python -c "import fastapi, uvicorn, sqlalchemy, asyncpg, psycopg2; print('Core deps OK')"
 RUN python -c "import numpy; print(f'numpy {numpy.__version__}')"
-RUN python -c "import karateclub; print('karateclub OK')" || echo "WARN: karateclub not available"
 RUN python -c "import spacy; print('spacy OK')"
 
 # Copy application code

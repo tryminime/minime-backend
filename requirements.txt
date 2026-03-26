@@ -11,6 +11,7 @@ uvicorn[standard]>=0.27.0
 python-multipart>=0.0.6
 orjson>=3.9.0
 asyncpg>=0.29.0
+psycopg2-binary>=2.9.9
 
 # Analytics API dependencies
 weasyprint>=60.2  # PDF generation
