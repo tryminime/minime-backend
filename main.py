@@ -29,43 +29,52 @@ async def lifespan(app: FastAPI):
     """
     Application lifespan manager.
     Initializes and closes database connections.
+    All inits are non-fatal with timeouts so the app always starts
+    and binds to the port (critical for Render deployment).
     """
+    import asyncio
     logger.info("Starting MiniMe API", environment=settings.ENVIRONMENT)
     
-    # Initialize PostgreSQL
+    # Initialize PostgreSQL (with timeout to prevent hanging on unreachable hosts)
     try:
-        await init_db()
+        await asyncio.wait_for(init_db(), timeout=10.0)
         logger.info("PostgreSQL initialized")
+    except asyncio.TimeoutError:
+        logger.warning("PostgreSQL initialization timed out (non-fatal)")
     except Exception as e:
-        logger.warning("PostgreSQL initialization failed", error=str(e))
-        if settings.ENVIRONMENT != "development":
-            raise
+        logger.warning("PostgreSQL initialization failed (non-fatal)", error=str(e))
         
     # Initialize Neo4j (optional — graph explorer won't work without it)
     try:
-        await init_neo4j()
+        await asyncio.wait_for(init_neo4j(), timeout=10.0)
         logger.info("Neo4j initialized")
+    except asyncio.TimeoutError:
+        logger.warning("Neo4j initialization timed out (non-fatal)")
     except Exception as e:
         logger.warning("Neo4j initialization failed (non-fatal)", error=str(e))
         
     # Initialize Redis (optional — caching/queues degraded without it)
     try:
-        await init_redis()
+        await asyncio.wait_for(init_redis(), timeout=10.0)
         logger.info("Redis initialized")
+    except asyncio.TimeoutError:
+        logger.warning("Redis initialization timed out (non-fatal)")
     except Exception as e:
         logger.warning("Redis initialization failed (non-fatal)", error=str(e))
         
     # Initialize Qdrant (optional — vector search won't work without it)
     try:
-        await init_qdrant()
+        await asyncio.wait_for(init_qdrant(), timeout=10.0)
         logger.info("Qdrant initialized")
+    except asyncio.TimeoutError:
+        logger.warning("Qdrant initialization timed out (non-fatal)")
     except Exception as e:
         logger.warning("Qdrant initialization failed (non-fatal)", error=str(e))
     
     # Start sync scheduler (Phase 3c — after all DBs are ready)
     try:
         from services.sync_scheduler import start_scheduler
-        await start_scheduler()
+        await asyncio.wait_for(start_scheduler(), timeout=5.0)
         logger.info("Sync scheduler started")
     except Exception as e:
         logger.warning("Sync scheduler start failed (non-fatal)", error=str(e))
@@ -86,10 +95,22 @@ async def lifespan(app: FastAPI):
         await close_all_cloud_clients()
     except Exception:
         pass
-    await close_db()
-    await close_neo4j()
-    await close_redis()
-    await close_qdrant()
+    try:
+        await close_db()
+    except Exception:
+        pass
+    try:
+        await close_neo4j()
+    except Exception:
+        pass
+    try:
+        await close_redis()
+    except Exception:
+        pass
+    try:
+        await close_qdrant()
+    except Exception:
+        pass
     logger.info("All connections closed")
 
 
