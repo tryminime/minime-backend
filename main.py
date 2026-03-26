@@ -239,10 +239,46 @@ async def readiness_check():
     except Exception:
         checks["postgres"] = False
 
-    # Neo4j, Redis, Qdrant — mark as True if not configured (optional services)
-    checks["neo4j"] = True   # TODO: add check when neo4j is required
-    checks["redis"] = True   # TODO: add check when redis is required
-    checks["qdrant"] = True  # TODO: add check when qdrant is required
+    # Check Neo4j (optional — skip if not configured)
+    try:
+        from config.settings import settings as _settings
+        if _settings.NEO4J_URI:
+            from database.neo4j_client import get_neo4j_driver
+            driver = get_neo4j_driver()
+            if driver:
+                driver.verify_connectivity()
+                checks["neo4j"] = True
+            else:
+                checks["neo4j"] = True  # Not configured = skip
+        else:
+            checks["neo4j"] = True  # Not configured = skip
+    except Exception:
+        checks["neo4j"] = False
+
+    # Check Redis (optional — skip if not configured)
+    try:
+        import redis as _redis
+        from config.settings import settings as _rs
+        if _rs.REDIS_URL:
+            r = _redis.from_url(_rs.REDIS_URL, socket_connect_timeout=2)
+            r.ping()
+            checks["redis"] = True
+        else:
+            checks["redis"] = True  # Not configured = skip
+    except Exception:
+        checks["redis"] = False
+
+    # Check Qdrant (optional — skip if not configured)
+    try:
+        from config.settings import settings as _qs
+        if _qs.QDRANT_URL:
+            import httpx
+            resp = httpx.get(f"{_qs.QDRANT_URL}/healthz", timeout=2.0)
+            checks["qdrant"] = resp.status_code == 200
+        else:
+            checks["qdrant"] = True  # Not configured = skip
+    except Exception:
+        checks["qdrant"] = False
     
     all_healthy = all(checks.values())
     

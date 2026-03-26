@@ -184,7 +184,7 @@ class TestProductivityMetricsService:
             {'application_name': 'notion', 'occurred_at': base_time + timedelta(minutes=14)},
         ]
         
-       switches = await service._compute_context_switches(activities)
+        switches = await service._compute_context_switches(activities)
         
         # Only 2 switches should be counted (at 2min and 14min)
         assert switches == 2

@@ -92,7 +92,7 @@ def _verify_schema(config):
         
         # Expected counts
         expected_constraints = 8  # One per node type
-        expected_indexes = 30+    # Multiple per type
+        expected_indexes = 30    # Multiple per type
         
         if len(constraints) >= expected_constraints:
             logger.info(f"   ✅ Constraints OK ({len(constraints)} >= {expected_constraints})")

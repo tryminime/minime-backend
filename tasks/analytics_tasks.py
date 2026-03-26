@@ -158,7 +158,7 @@ def generate_daily_summary_task(self, user_id: str, target_date_str: str):
         result = loop.run_until_complete(run())
         return result
         
-   except Exception as exc:
+    except Exception as exc:
         logger.error(
             "Failed to generate daily summary",
             user_id=user_id,
