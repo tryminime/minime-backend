@@ -16,12 +16,15 @@ WORKDIR /app
 
 # Install Python dependencies
 COPY requirements.txt requirements-ai.txt ./
+
+# Pin numpy<2 FIRST — scipy/sklearn/karateclub were compiled against numpy 1.x
 RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir "numpy<2" && \
     pip install --no-cache-dir asyncpg && \
     pip install --no-cache-dir -r requirements.txt || true
 
-# Fix karateclub forcing old numpy — install with --no-deps and pin scipy
-RUN pip install --no-cache-dir --no-deps "karateclub>=1.3.3" "gensim>=4.3.0" "scipy<1.12.0" || true
+# Ensure compatible scipy after requirements install
+RUN pip install --no-cache-dir "scipy>=1.11.0,<1.12.0" || true
 
 # Download lightweight spaCy model for production
 RUN python -m spacy download en_core_web_sm || true
