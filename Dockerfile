@@ -40,7 +40,7 @@ EXPOSE 8000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+    CMD curl -f http://localhost:${PORT:-10000}/health || exit 1
 
-# Run with uvicorn (single worker for free tier memory)
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
+# Run with uvicorn — use PORT env var from Render (default 10000), fallback to 8000 for local
+CMD uvicorn main:app --host 0.0.0.0 --port ${PORT:-10000} --workers 1
