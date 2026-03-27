@@ -11,7 +11,8 @@ import sys
 import time
 
 # Add parent dir to path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# Add /app (parent of scripts/) to path so backend modules are importable
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 def init_db():
     """Create all database tables using SQLAlchemy models."""
