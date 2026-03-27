@@ -31,5 +31,8 @@ EXPOSE 10000
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
     CMD curl -f http://localhost:${PORT:-10000}/health || exit 1
 
-# Run with uvicorn — bind to PORT env var from Render (default 10000)
-CMD uvicorn main:app --host 0.0.0.0 --port ${PORT:-10000} --workers 1
+# Make startup script executable
+RUN chmod +x start.sh
+
+# Run migrations then start server
+CMD ["sh", "start.sh"]

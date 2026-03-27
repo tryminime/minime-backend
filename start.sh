@@ -1,6 +1,11 @@
-#!/bin/bash
-# Start the MiniMe backend server
+#!/bin/sh
+# Startup script for MiniMe backend (Render production)
+# Runs DB migrations first, then starts the API server.
 
-cd "$(dirname "$0")/.."
-source backend/venv/bin/activate
-python -m uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
+set -e
+
+echo "==> Running database migrations..."
+alembic upgrade head
+echo "==> Migrations complete. Starting API server..."
+
+exec uvicorn main:app --host 0.0.0.0 --port ${PORT:-10000} --workers 1
