@@ -41,7 +41,6 @@ async def lifespan(app: FastAPI):
         logger.info("PostgreSQL initialized")
         
         # Ensure all ORM tables exist (idempotent — skips existing tables)
-        # This runs on every startup, so tables are always created even on fresh DBs
         try:
             from database.postgres import engine, Base
             import models  # noqa — registers User, Activity, Session, etc.
@@ -49,28 +48,6 @@ async def lifespan(app: FastAPI):
             import models.integration_models  # noqa
             async with engine.begin() as conn:
                 await conn.run_sync(Base.metadata.create_all)
-                
-                # The sessions table was originally created by Alembic 001 with only
-                # 6 columns. The ORM model has 10+. Rather than ALTER each missing
-                # column, just drop and recreate it cleanly. No real session data
-                # worth preserving on a fresh production deployment.
-                from sqlalchemy import text
-                try:
-                    await conn.execute(text("DROP TABLE IF EXISTS sessions CASCADE"))
-                except Exception:
-                    pass
-                
-                # Now recreate all tables — sessions will be built from the ORM model
-                await conn.run_sync(Base.metadata.create_all)
-                
-                # Also ensure any ALTER TABLE additions for users
-                try:
-                    await conn.execute(text(
-                        "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_superadmin BOOLEAN DEFAULT false NOT NULL"
-                    ))
-                except Exception:
-                    pass
-                        
             logger.info("Database tables verified/created")
         except Exception as e:
             logger.warning("Table creation failed (non-fatal)", error=str(e))
@@ -232,20 +209,17 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 @app.exception_handler(Exception)
 async def general_exception_handler(request: Request, exc: Exception):
     """Handle unexpected exceptions."""
-    import traceback
     logger.error(
         "Unexpected error",
         request_id=getattr(request.state, "request_id", "unknown"),
         error=str(exc),
-        traceback=traceback.format_exc(),
         exc_info=True
     )
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={
             "detail": "Internal server error",
-            "message": str(exc),
-            "traceback": traceback.format_exc().split("\n")[-4:]
+            "message": str(exc) if settings.DEBUG else "An unexpected error occurred"
         }
     )
 
