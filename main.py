@@ -49,6 +49,23 @@ async def lifespan(app: FastAPI):
             import models.integration_models  # noqa
             async with engine.begin() as conn:
                 await conn.run_sync(Base.metadata.create_all)
+                
+                # create_all() doesn't add missing columns to existing tables.
+                # Run ALTER TABLE for any columns added after initial table creation.
+                from sqlalchemy import text
+                alter_statements = [
+                    "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS device_name VARCHAR(255)",
+                    "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS remember_device BOOLEAN DEFAULT false NOT NULL",
+                    "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS ip_address VARCHAR(45)",
+                    "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS user_agent TEXT",
+                    "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_superadmin BOOLEAN DEFAULT false NOT NULL",
+                ]
+                for stmt in alter_statements:
+                    try:
+                        await conn.execute(text(stmt))
+                    except Exception:
+                        pass  # column already exists or other non-fatal issue
+                        
             logger.info("Database tables verified/created")
         except Exception as e:
             logger.warning("Table creation failed (non-fatal)", error=str(e))
