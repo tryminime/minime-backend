@@ -26,10 +26,10 @@ security = HTTPBearer()
 # Initialize Stripe
 stripe.api_key = os.environ.get("STRIPE_SECRET_KEY", "")
 
-# Price IDs from env
+# Price IDs from env (default to test placeholders that trigger demo-mode checkout)
 PRICE_MAP = {
-    "pro": os.environ.get("STRIPE_PRICE_PRO_MONTHLY", ""),
-    "enterprise": os.environ.get("STRIPE_PRICE_ENTERPRISE_MONTHLY", ""),
+    "pro": os.environ.get("STRIPE_PRICE_PRO_MONTHLY", "price_test_pro"),
+    "enterprise": os.environ.get("STRIPE_PRICE_ENTERPRISE_MONTHLY", "price_test_enterprise"),
 }
 
 # Plan limits configuration
