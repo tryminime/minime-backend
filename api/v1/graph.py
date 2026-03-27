@@ -14,8 +14,15 @@ from slowapi.util import get_remote_address
 
 from auth.jwt_handler import get_current_user
 from models import User
-from services.node2vec_service import node2vec_service
-from services.community_service import community_service
+# Lazy imports — these depend on networkx/ML packages not installed on Render
+try:
+    from services.node2vec_service import node2vec_service
+except ImportError:
+    node2vec_service = None  # type: ignore
+try:
+    from services.community_service import community_service
+except ImportError:
+    community_service = None  # type: ignore
 from config.neo4j_config import get_neo4j_session
 from api.v1.graph_models import (
     NodeDetail, NodeMetrics, NeighborResponse, NeighborNode,
