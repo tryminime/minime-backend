@@ -1,11 +1,11 @@
 #!/bin/sh
 # Startup script for MiniMe backend (Render production)
-# Runs DB migrations first, then starts the API server.
+# Creates DB tables via SQLAlchemy create_all(), then starts the API server.
 
 set -e
 
-echo "==> Running database migrations..."
-alembic upgrade head
-echo "==> Migrations complete. Starting API server..."
+echo "==> Initializing database tables..."
+python scripts/init_db_render.py
 
+echo "==> Starting API server on port ${PORT:-10000}..."
 exec uvicorn main:app --host 0.0.0.0 --port ${PORT:-10000} --workers 1
