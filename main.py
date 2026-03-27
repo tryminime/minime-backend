@@ -39,6 +39,20 @@ async def lifespan(app: FastAPI):
     try:
         await asyncio.wait_for(init_db(), timeout=10.0)
         logger.info("PostgreSQL initialized")
+        
+        # Ensure all ORM tables exist (idempotent — skips existing tables)
+        # This runs on every startup, so tables are always created even on fresh DBs
+        try:
+            from database.postgres import engine, Base
+            import models  # noqa — registers User, Activity, Session, etc.
+            import models.analytics_models  # noqa
+            import models.integration_models  # noqa
+            async with engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
+            logger.info("Database tables verified/created")
+        except Exception as e:
+            logger.warning("Table creation failed (non-fatal)", error=str(e))
+            
     except asyncio.TimeoutError:
         logger.warning("PostgreSQL initialization timed out (non-fatal)")
     except Exception as e:
