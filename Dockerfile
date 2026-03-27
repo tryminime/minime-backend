@@ -21,7 +21,8 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # Verify critical imports work at build time
 RUN python -c "import fastapi, uvicorn, sqlalchemy, asyncpg, psycopg2, stripe; print('Core deps OK')"
 
-# Copy application code
+# Copy application code (cache-bust: forces rebuild when code changes)
+ARG CACHEBUST=1
 COPY . .
 
 # Expose port (default Render PORT is 10000)
