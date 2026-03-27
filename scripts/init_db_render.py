@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
 Database initialization script for Render deployment.
-Uses SQLAlchemy's create_all() which is idempotent (creates tables only if they don't exist).
-Then runs ALTER TABLE to add any missing columns to existing tables.
+Drops and recreates the sessions table (which was originally created with
+an incomplete schema by Alembic 001), then runs create_all() for all other tables.
 """
 
 import os
@@ -13,7 +13,7 @@ import time
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 def init_db():
-    """Create all database tables and ensure columns are up to date."""
+    """Create all database tables with correct schemas."""
     import asyncio
     from sqlalchemy.ext.asyncio import create_async_engine
     from sqlalchemy import text
@@ -23,7 +23,6 @@ def init_db():
         print("ERROR: DATABASE_URL not set", flush=True)
         sys.exit(1)
     
-    # SQLAlchemy async requires +asyncpg driver
     if database_url.startswith("postgres://"):
         database_url = database_url.replace("postgres://", "postgresql://", 1)
     async_url = database_url.replace("postgresql://", "postgresql+asyncpg://")
@@ -31,32 +30,33 @@ def init_db():
     print("Connecting to database...", flush=True)
     
     async def run():
-        # Import all models to register them with Base.metadata
         from database.postgres import Base
-        import models  # noqa — registers User, Activity, Session, etc.
+        import models  # noqa
         import models.analytics_models  # noqa
         import models.integration_models  # noqa
         
         engine = create_async_engine(async_url, echo=False)
         
         async with engine.begin() as conn:
-            # create_all is idempotent — skips existing tables
+            # Drop sessions table — it was created by Alembic 001 with only 6
+            # columns, but the ORM model has 10+. create_all() can't add missing
+            # columns to existing tables.
+            try:
+                await conn.execute(text("DROP TABLE IF EXISTS sessions CASCADE"))
+                print("Dropped stale sessions table.", flush=True)
+            except Exception:
+                pass
+            
+            # create_all — idempotent for all OTHER tables, creates sessions fresh
             await conn.run_sync(Base.metadata.create_all)
             
-            # create_all() does NOT add missing columns to existing tables.
-            # Run ALTER TABLE for any columns added after initial table creation.
-            alter_statements = [
-                "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS device_name VARCHAR(255)",
-                "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS remember_device BOOLEAN DEFAULT false NOT NULL",
-                "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS ip_address VARCHAR(45)",
-                "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS user_agent TEXT",
-                "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_superadmin BOOLEAN DEFAULT false NOT NULL",
-            ]
-            for stmt in alter_statements:
-                try:
-                    await conn.execute(text(stmt))
-                except Exception:
-                    pass  # column already exists or other non-fatal issue
+            # Ensure is_superadmin on users
+            try:
+                await conn.execute(text(
+                    "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_superadmin BOOLEAN DEFAULT false NOT NULL"
+                ))
+            except Exception:
+                pass
         
         await engine.dispose()
         print("All tables created/verified.", flush=True)

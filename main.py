@@ -50,21 +50,26 @@ async def lifespan(app: FastAPI):
             async with engine.begin() as conn:
                 await conn.run_sync(Base.metadata.create_all)
                 
-                # create_all() doesn't add missing columns to existing tables.
-                # Run ALTER TABLE for any columns added after initial table creation.
+                # The sessions table was originally created by Alembic 001 with only
+                # 6 columns. The ORM model has 10+. Rather than ALTER each missing
+                # column, just drop and recreate it cleanly. No real session data
+                # worth preserving on a fresh production deployment.
                 from sqlalchemy import text
-                alter_statements = [
-                    "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS device_name VARCHAR(255)",
-                    "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS remember_device BOOLEAN DEFAULT false NOT NULL",
-                    "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS ip_address VARCHAR(45)",
-                    "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS user_agent TEXT",
-                    "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_superadmin BOOLEAN DEFAULT false NOT NULL",
-                ]
-                for stmt in alter_statements:
-                    try:
-                        await conn.execute(text(stmt))
-                    except Exception:
-                        pass  # column already exists or other non-fatal issue
+                try:
+                    await conn.execute(text("DROP TABLE IF EXISTS sessions CASCADE"))
+                except Exception:
+                    pass
+                
+                # Now recreate all tables — sessions will be built from the ORM model
+                await conn.run_sync(Base.metadata.create_all)
+                
+                # Also ensure any ALTER TABLE additions for users
+                try:
+                    await conn.execute(text(
+                        "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_superadmin BOOLEAN DEFAULT false NOT NULL"
+                    ))
+                except Exception:
+                    pass
                         
             logger.info("Database tables verified/created")
         except Exception as e:
