@@ -14,7 +14,11 @@ from datetime import datetime
 from typing import Optional
 import structlog
 
-from services.embedding_service import embedding_service
+# Lazy import — sentence-transformers not installed on Render (desktop-only)
+try:
+    from services.embedding_service import embedding_service
+except ImportError:
+    embedding_service = None  # type: ignore
 
 logger = structlog.get_logger()
 

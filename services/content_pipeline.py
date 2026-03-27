@@ -17,7 +17,11 @@ import re
 import math
 import structlog
 
-from services.nlp_service import nlp_service
+# Lazy import — spaCy not installed on Render (desktop-only)
+try:
+    from services.nlp_service import nlp_service
+except ImportError:
+    nlp_service = None  # type: ignore
 
 logger = structlog.get_logger()
 
