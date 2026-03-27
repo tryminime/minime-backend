@@ -9,6 +9,8 @@ services:
     dockerContext: .
     plan: free  # Change to "starter" ($7/mo) for always-on
     healthCheckPath: /health
+    # Run DB migrations before each deploy (zero-downtime safe)
+    preDeployCommand: "alembic upgrade head"
     envVars:
       - key: ENVIRONMENT
         value: production
@@ -18,29 +20,22 @@ services:
         fromDatabase:
           name: minime-db
           property: connectionURI
-      - key: REDIS_URL
-        fromService:
-          name: minime-redis
-          type: redis
-          property: connectionURI
       - key: JWT_SECRET_KEY
         generateValue: true
       - key: SECRET_KEY
         generateValue: true
       - key: CORS_ORIGINS
         value: "https://www.tryminime.com,https://tryminime.com,http://localhost:3000"
-      - key: SPACY_MODEL
-        value: en_core_web_sm
-      - key: PORT
-        value: "8000"
+      # NOTE: PORT is set automatically by Render to 10000 — do NOT override it here
+      # Add these manually in the Render dashboard for external services:
+      # NEO4J_URI, NEO4J_USERNAME, NEO4J_PASSWORD
+      # REDIS_URL (if using external Redis)
+      # QDRANT_HOST, QDRANT_PORT, QDRANT_API_KEY (if using Qdrant Cloud)
+      # STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
+      # OPENAI_API_KEY, ANTHROPIC_API_KEY (optional)
 
 databases:
   - name: minime-db
     plan: free  # Change to "starter" for more storage
     databaseName: minime
     user: minime
-
-# Optional: Uncomment for managed Redis
-# redis:
-#   - name: minime-redis
-#     plan: free
