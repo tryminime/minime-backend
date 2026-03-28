@@ -209,17 +209,22 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 @app.exception_handler(Exception)
 async def general_exception_handler(request: Request, exc: Exception):
     """Handle unexpected exceptions."""
+    import traceback
+    tb = traceback.format_exc()
     logger.error(
         "Unexpected error",
         request_id=getattr(request.state, "request_id", "unknown"),
         error=str(exc),
+        path=str(request.url.path),
+        traceback=tb,
         exc_info=True
     )
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={
             "detail": "Internal server error",
-            "message": str(exc) if settings.DEBUG else "An unexpected error occurred"
+            "message": str(exc),
+            "path": str(request.url.path),
         }
     )
 
